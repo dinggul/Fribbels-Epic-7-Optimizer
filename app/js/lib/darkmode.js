@@ -42,8 +42,11 @@ module.exports = {
 
             $("#clearAllFilterIcon").attr("src", "./assets/trash_dt.png")
             $("#duplicateFilterIcon").attr("src", "./assets/copy_dt.png")
+            $("#unequippedFilterIcon").attr("src", "./assets/unequipped_dt.png")
             $("img.tooltipImageLeft").attr("src", "./assets/tooltip_dt.png")
             $("img.tooltipImageRight").attr("src", "./assets/tooltip_dt.png")
+
+            // $("#donateBadge").attr("src", "./assets/badgedonate_dt.png")
 
             OptimizerGrid.toggleDarkMode(true);
             ItemsGrid.toggleDarkMode(true);
@@ -78,8 +81,11 @@ module.exports = {
 
             $("#clearAllFilterIcon").attr("src", "./assets/trash.png")
             $("#duplicateFilterIcon").attr("src", "./assets/copy.png")
+            $("#unequippedFilterIcon").attr("src", "./assets/unequipped.png")
             $("img.tooltipImageLeft").attr("src", "./assets/tooltip.png")
             $("img.tooltipImageRight").attr("src", "./assets/tooltip.png")
+
+            // $("#donateBadge").attr("src", "./assets/badgedonate.png")
 
             OptimizerGrid.toggleDarkMode(false);
             ItemsGrid.toggleDarkMode(false);

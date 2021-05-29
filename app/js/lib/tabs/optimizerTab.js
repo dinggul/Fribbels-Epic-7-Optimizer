@@ -83,9 +83,16 @@ async function loadPreviousHeroFilters(heroResponse) {
     const request = hero.optimizationRequest;
 
     if (!hero) return;
-    if (!request) return;
-
-    console.log(request);
+    if (!request) {
+        $("#inputPredictReforges").prop('checked', true);
+        $("#inputSubstatMods").prop('checked', false);
+        $("#inputAllowLockedItems").prop('checked', false);
+        $("#inputAllowEquippedItems").prop('checked', false);
+        $("#inputKeepCurrentItems").prop('checked', false);
+        $("#inputOrderedHeroPriority").prop('checked', false);
+        $("#inputOnlyMaxedGear").prop('checked', false);
+        return;
+    }
 
     $("#inputMinAtkLimit").val(inputDisplayNumber(request.inputAtkMinLimit))
     $("#inputMaxAtkLimit").val(inputDisplayNumber(request.inputAtkMaxLimit))
@@ -133,12 +140,13 @@ async function loadPreviousHeroFilters(heroResponse) {
     $("#inputMinPriorityLimit").val(inputDisplayNumber(request.inputMinPriorityLimit));
     $("#inputMaxPriorityLimit").val(inputDisplayNumber(request.inputMaxPriorityLimit));
 
-    $("#inputPredictReforges").prop('checked', request.inputPredictReforges);
-    $("#inputSubstatMods").prop('checked', request.inputSubstatMods);
-    $("#inputAllowLockedItems").prop('checked', request.inputAllowLockedItems);
-    $("#inputAllowEquippedItems").prop('checked', request.inputAllowEquippedItems);
-    $("#inputKeepCurrentItems").prop('checked', request.inputKeepCurrentItems);
-    $("#inputOnlyMaxedGear").prop('checked', request.inputOnlyMaxedGear);
+    $("#inputPredictReforges").prop('checked', isNullUndefined(request.inputPredictReforges) ? true : request.inputPredictReforges);
+    $("#inputSubstatMods").prop('checked', isNullUndefined(request.inputSubstatMods) ? true : request.inputSubstatMods);
+    $("#inputAllowLockedItems").prop('checked', isNullUndefined(request.inputAllowLockedItems) ? false : request.inputAllowLockedItems);
+    $("#inputAllowEquippedItems").prop('checked', isNullUndefined(request.inputAllowEquippedItems) ? false : request.inputAllowEquippedItems);
+    $("#inputKeepCurrentItems").prop('checked', isNullUndefined(request.inputKeepCurrentItems) ? false : request.inputKeepCurrentItems);
+    $("#inputOrderedHeroPriority").prop('checked', isNullUndefined(request.inputOrderedHeroPriority) ? false : request.inputOrderedHeroPriority);
+    $("#inputOnlyMaxedGear").prop('checked', isNullUndefined(request.inputOnlyMaxedGear) ? false : request.inputOnlyMaxedGear);
 
     document.querySelector('#atkSlider')['rangeslider-js'].update({value: inputDisplayNumberNumber(request.inputAtkPriority)})
     document.querySelector('#atkSliderInput').setAttribute('value', inputDisplayNumberNumber(request.inputAtkPriority))
@@ -172,6 +180,10 @@ async function loadPreviousHeroFilters(heroResponse) {
     Selectors.setGearMainAndSetsFromRequest(request);
     recalculateFilters(null, heroResponse);
     fixSliders()
+}
+
+function isNullUndefined(x) {
+    return x === null || x === undefined;
 }
 
 module.exports = {
@@ -447,6 +459,7 @@ function clearOptions() {
     $("#inputSubstatMods").prop('checked', false);
     $("#inputAllowLockedItems").prop('checked', false);
     $("#inputAllowEquippedItems").prop('checked', false);
+    $("#inputOrderedHeroPriority").prop('checked', false);
     $("#inputKeepCurrentItems").prop('checked', false);
     $("#inputOnlyMaxedGear").prop('checked', false);
 }
@@ -531,13 +544,14 @@ async function recalculateFilters(e, heroResponse) {
     }
 
     const params = getOptimizationRequestParams();
+
     if (!heroResponse) {
         heroResponse = await Api.getHeroById(heroId, $('#inputPredictReforges').prop('checked'));
     }
 
     const allItemsResponse = await Api.getAllItems();
 
-    applyItemFilters(params, heroResponse, allItemsResponse).then(result => {
+    applyItemFilters(params, heroResponse, allItemsResponse, false).then(result => {
         var items = result.items;
         var allItems = result.allItems;
 
@@ -593,7 +607,7 @@ function filterSelectedGearByCheckbox(selectedGear) {
     if ($('#optimizerGridRing').prop('checked')) filteredIds.push(selectedGear[4]);
     if ($('#optimizerGridBoots').prop('checked')) filteredIds.push(selectedGear[5]);
 
-    return filteredIds;
+    return filteredIds.filter(x => !!x);
 }
 
 async function addBuild() {
@@ -722,12 +736,14 @@ async function unlockSelectedGear() {
 async function applyItemFilters(params, heroResponse, allItemsResponse, submit) {
     const gearMainFilters = Selectors.getGearMainFilters();
     const getAllItemsResponse = allItemsResponse;
-    // const heroResponse = await Api.getHeroById(heroId);
     const hero = heroResponse.hero;
     const baseStats = heroResponse.baseStats;
     const heroId = hero.id;
     var allItems = getAllItemsResponse.items;
     var items = allItems;
+
+    const allHeroesResponse = await Api.getAllHeroes()
+    const heroes = allHeroesResponse.heroes;
 
     console.log("Optimization params", params);
 
@@ -756,8 +772,34 @@ async function applyItemFilters(params, heroResponse, allItemsResponse, submit) 
         items = items.filter(x => !x.locked || x.equippedById == heroId);
     }
 
+    if (params.inputOrderedHeroPriority) {
+        // todo
+        console.warn(heroes, hero);
+        // var higherPriorityItems = [];
+        var higherPriorityHeroes = [];
+        for (var i = 0; i < heroes.length; i++) {
+            if (heroes[i].id == hero.id) {
+                break;
+            }
+
+            higherPriorityHeroes.push(heroes[i].id);
+
+            // higherPriorityItems.push(
+            //     heroes[i].equipment.Weapon?.id,
+            //     heroes[i].equipment.Helmet?.id,
+            //     heroes[i].equipment.Armor?.id,
+            //     heroes[i].equipment.Necklace?.id,
+            //     heroes[i].equipment.Ring?.id,
+            //     heroes[i].equipment.Boots?.id
+            // )
+        }
+
+        // higherPriorityItems = higherPriorityItems.filter(x => !!x);
+        items = items.filter(x => !higherPriorityHeroes.includes(x.equippedById))
+        console.warn(higherPriorityHeroes);
+    }
+
     if (params.inputKeepCurrentItems) {
-        // const result = await Api.getHeroById(heroId);
         if (!hero.equipment) {
             items = [];
             hero.equipment = {};
@@ -807,8 +849,7 @@ async function applyItemFilters(params, heroResponse, allItemsResponse, submit) 
 
     items = ModificationFilter.apply(items, params.inputSubstatMods, hero, submit);
 
-    // items = ForceFilter.applyForceFilters(params, items)
-    items = PriorityFilter.applyPriorityFilters(params, items, baseStats, allItems, params.inputPredictReforges)
+    items = PriorityFilter.applyPriorityFilters(params, items, baseStats, allItems, params.inputPredictReforges, params.inputSubstatMods)
 
     items = items.sort((a, b) => {
         return a.set-b.set;
@@ -930,6 +971,10 @@ async function submitOptimizationRequest() {
         hero: hero
     }
 
+    if (!hero.artifactName || hero.artifactName == "None") {
+        Notifier.warn("Your hero does not have an artifact equipped, use the 'Add Bonus Stats' button on the Heroes page to add artifact stats");
+    }
+
     if (warnParams(params)) {
         return;
     }
@@ -1019,6 +1064,7 @@ function getOptimizationRequestParams(showError) {
     request.inputSubstatMods   = readCheckbox('inputSubstatMods');
     request.inputAllowLockedItems   = readCheckbox('inputAllowLockedItems');
     request.inputAllowEquippedItems = readCheckbox('inputAllowEquippedItems');
+    request.inputOrderedHeroPriority   = readCheckbox('inputOrderedHeroPriority');
     request.inputKeepCurrentItems   = readCheckbox('inputKeepCurrentItems');
     request.inputOnlyMaxedGear   = readCheckbox('inputOnlyMaxedGear');
     // request.inputOver85   = readCheckbox('inputOver85');
